@@ -1,0 +1,10 @@
+﻿global using Carter;
+global using FluentValidation;
+global using Mapster;
+global using MediatR;
+global using Microsoft.EntityFrameworkCore;
+global using TareasService.Common.CQRS;
+global using TareasService.Common.Exceptions;
+global using TareasService.Common.Extensions;
+global using TareasService.Domain;
+global using TareasService.Infrastructure;
