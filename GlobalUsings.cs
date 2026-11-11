@@ -8,3 +8,7 @@ global using TareasService.Common.Exceptions;
 global using TareasService.Common.Extensions;
 global using TareasService.Domain;
 global using TareasService.Infrastructure;
+global using TareasService.Infrastructure.Clients;
+global using TareasService.Infrastructure.Clients.Grupos;
+global using TareasService.Infrastructure.Clients.Materias;
+global using TareasService.Infrastructure.Clients.Notificaciones;
