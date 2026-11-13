@@ -1,6 +1,6 @@
 ﻿using TareasService.Infrastructure.Clients.Grupos;
 using TareasService.Infrastructure.Clients.Materias;
-using TareasService.Infrastructure.Clients.Notificaciones;
+using TareasService.Infrastructure.Eventos;
 
 namespace TareasService.Features.Tareas.Create;
 
@@ -33,7 +33,7 @@ internal class CreateTareaHandler(
     TareasDbContext db,
     IMateriasClient materiasClient,
     IGruposClient gruposClient,
-    INotificacionesClient notificacionesClient)
+    IEventosTarea eventos)
     : ICommandHandler<CreateTareaCommand, CreateTareaResult>
 {
     public async Task<CreateTareaResult> Handle(
@@ -76,15 +76,8 @@ internal class CreateTareaHandler(
         db.Tareas.Add(tarea);
         await db.SaveChangesAsync(cancellationToken);
 
-        // Aviso a la campanita: si notificaciones falla, la tarea ya quedó guardada
-        await notificacionesClient.NotificarAsync(
-            new CrearNotificacionRequest(
-                tarea.UsuarioId,
-                "tarea",
-                "Nueva tarea creada",
-                $"{tarea.Titulo} vence el {tarea.FechaEntrega:dd/MM/yyyy}",
-                tarea.Id),
-            cancellationToken);
+        // Avisa a los demás servicios; si fallan, la tarea ya quedó guardada
+        await eventos.CreadaAsync(tarea, cancellationToken);
 
         return new CreateTareaResult(
             tarea.Id,

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json;
@@ -6,9 +7,11 @@ using System.Text.Json.Serialization;
 using TareasService.Common;
 using TareasService.Common.Behaviors;
 using TareasService.Infrastructure.Clients;
+using TareasService.Infrastructure.Clients.Estadisticas;
 using TareasService.Infrastructure.Clients.Grupos;
 using TareasService.Infrastructure.Clients.Materias;
 using TareasService.Infrastructure.Clients.Notificaciones;
+using TareasService.Infrastructure.Eventos;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,7 +60,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<TokenRelayHandler>();
 
-// --- Clients: token del usuario + Polly (reintentos, timeout, circuit breaker) ---
+// --- Clients que validan: token del usuario + Polly (reintentos, timeout, circuit breaker) ---
 builder.Services.AddHttpClient<IMateriasClient, MateriasClient>(client =>
         client.BaseAddress = new Uri(builder.Configuration["Servicios:Materias"]
             ?? throw new InvalidOperationException("Falta configurar Servicios:Materias")))
@@ -70,15 +73,27 @@ builder.Services.AddHttpClient<IGruposClient, GruposClient>(client =>
     .AddHttpMessageHandler<TokenRelayHandler>()
     .AddStandardResilienceHandler();
 
-// --- Notificaciones: endpoint interno (sin token) y tiempos cortos, el aviso no puede frenar la tarea ---
+// --- Clients que avisan: endpoints internos (sin token) y tiempos cortos, nunca frenan la tarea ---
+Action<HttpStandardResilienceOptions> tiemposCortos = options =>
+{
+    options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(2);
+    options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(5);
+};
+
 builder.Services.AddHttpClient<INotificacionesClient, NotificacionesClient>(client =>
         client.BaseAddress = new Uri(builder.Configuration["Servicios:Notificaciones"]
             ?? throw new InvalidOperationException("Falta configurar Servicios:Notificaciones")))
-    .AddStandardResilienceHandler(options =>
-    {
-        options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(2);
-        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(5);
-    });
+    .AddStandardResilienceHandler(tiemposCortos);
+
+builder.Services.AddHttpClient<IEstadisticasClient, EstadisticasClient>(client =>
+        client.BaseAddress = new Uri(builder.Configuration["Servicios:Estadisticas"]
+            ?? throw new InvalidOperationException("Falta configurar Servicios:Estadisticas")))
+    .AddStandardResilienceHandler(tiemposCortos);
+
+
+
+// --- Eventos de tareas: hoy HTTP a notificaciones + estadísticas, mañana RabbitMQ ---
+builder.Services.AddScoped<IEventosTarea, EventosTarea>();
 
 // --- JWT: valida los tokens que genera users-auth (HS256 + JWT_SECRET compartido) ---
 var jwtKey = builder.Configuration["Jwt:Key"]

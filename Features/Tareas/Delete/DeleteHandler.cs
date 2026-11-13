@@ -1,10 +1,12 @@
-﻿namespace TareasService.Features.Tareas.Delete;
+﻿using TareasService.Infrastructure.Eventos;
+
+namespace TareasService.Features.Tareas.Delete;
 
 // --- Entrada: el dueño (del token) y la tarea (de la URL). No devuelve datos ---
 public record DeleteTareaCommand(int UsuarioId, int TareaId) : ICommand;
 
 // --- Lógica: eliminación lógica → la tarea pasa a "cancelada", no se borra de la base ---
-internal class DeleteTareaHandler(TareasDbContext db) : ICommandHandler<DeleteTareaCommand>
+internal class DeleteTareaHandler(TareasDbContext db, IEventosTarea eventos) : ICommandHandler<DeleteTareaCommand>
 {
     public async Task<Unit> Handle(DeleteTareaCommand command, CancellationToken cancellationToken)
     {
@@ -24,6 +26,9 @@ internal class DeleteTareaHandler(TareasDbContext db) : ICommandHandler<DeleteTa
         tarea.FechaActualizacion = FechaColombia.Ahora();
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Para estadísticas, cancelar es un cambio de estado: la tarea deja de contar
+        await eventos.EstadoCambiadoAsync(tarea, cancellationToken);
 
         return Unit.Value;
     }

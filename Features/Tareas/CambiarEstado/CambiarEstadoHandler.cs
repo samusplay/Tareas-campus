@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using TareasService.Infrastructure.Eventos;
 
 namespace TareasService.Features.Tareas.CambiarEstado;
 
@@ -15,7 +16,7 @@ public record CambiarEstadoResult(
     DateTime FechaActualizacion);
 
 // --- Lógica ---
-internal class CambiarEstadoHandler(TareasDbContext db)
+internal class CambiarEstadoHandler(TareasDbContext db, IEventosTarea eventos)
     : ICommandHandler<CambiarEstadoCommand, CambiarEstadoResult>
 {
     public async Task<CambiarEstadoResult> Handle(
@@ -40,6 +41,9 @@ internal class CambiarEstadoHandler(TareasDbContext db)
         tarea.FechaActualizacion = FechaColombia.Ahora();
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Estadísticas recalcula completadas, pendientes y vencidas con el estado nuevo
+        await eventos.EstadoCambiadoAsync(tarea, cancellationToken);
 
         return new CambiarEstadoResult(tarea.Id, tarea.Estado, tarea.FechaActualizacion);
     }

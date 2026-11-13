@@ -1,4 +1,6 @@
-﻿
+﻿using TareasService.Infrastructure.Clients.Grupos;
+using TareasService.Infrastructure.Clients.Materias;
+using TareasService.Infrastructure.Eventos;
 
 namespace TareasService.Features.Tareas.Update;
 
@@ -31,7 +33,8 @@ public record UpdateTareaResult(
 internal class UpdateTareaHandler(
     TareasDbContext db,
     IMateriasClient materiasClient,
-    IGruposClient gruposClient)
+    IGruposClient gruposClient,
+    IEventosTarea eventos)
     : ICommandHandler<UpdateTareaCommand, UpdateTareaResult>
 {
     public async Task<UpdateTareaResult> Handle(
@@ -75,6 +78,9 @@ internal class UpdateTareaHandler(
         tarea.FechaActualizacion = FechaColombia.Ahora();
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Estadísticas necesita la foto nueva: puede haber cambiado la fecha, la materia o el grupo
+        await eventos.ActualizadaAsync(tarea, cancellationToken);
 
         return new UpdateTareaResult(
             tarea.Id,

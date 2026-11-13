@@ -12,3 +12,4 @@ global using TareasService.Infrastructure.Clients;
 global using TareasService.Infrastructure.Clients.Grupos;
 global using TareasService.Infrastructure.Clients.Materias;
 global using TareasService.Infrastructure.Clients.Notificaciones;
+global using TareasService.Infrastructure.Clients.Estadisticas;

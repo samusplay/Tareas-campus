@@ -8,7 +8,9 @@ namespace TareasService.Common;
 public class HoraJsonConverter : JsonConverter<TimeOnly>
 {
     public override TimeOnly Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
-        TimeOnly.ParseExact(reader.GetString()!, "HH:mm", CultureInfo.InvariantCulture);
+      TimeOnly.TryParseExact(reader.GetString(), "HH:mm", out var hora)
+          ? hora
+          : throw new JsonException("La hora debe tener el formato HH:mm");
 
     public override void Write(Utf8JsonWriter writer, TimeOnly value, JsonSerializerOptions options) =>
         writer.WriteStringValue(value.ToString("HH:mm", CultureInfo.InvariantCulture));
